@@ -10,8 +10,6 @@ public class LexException(string message, int column, int line) : Exception(mess
 
 public class Lexer(string source)
 {
-    private readonly string _source = source;
-
     private int _index;
     private int _line = 1;
     private int _column;
@@ -25,14 +23,14 @@ public class Lexer(string source)
     {
         bool NextEq(Func<char, bool> predicate)
         {
-            return _index < _source.Length && predicate(_source[_index]);
+            return _index < source.Length && predicate(source[_index]);
         }
         var buffer = "";
-        while (_index < _source.Length)
+        while (_index < source.Length)
         {
-            var character = _source[_index];
+            var character = source[_index];
             _index++;
-            var outOfBounds = _index >= _source.Length;
+            var outOfBounds = _index >= source.Length;
             buffer += character;
             _column++;
             switch (buffer)
@@ -76,7 +74,7 @@ public class Lexer(string source)
                 case "+" when NextEq(c => c == '+'):
                 case "-" when NextEq(c => c == '-'):
                     {
-                        buffer += _source[_index];
+                        buffer += source[_index];
                         _index++;
                         _column++;
                         var token = buffer;
@@ -131,12 +129,12 @@ public class Lexer(string source)
                 #region Comments
                 case "/" when NextEq(c => c == '/'):
                     {
-                        while (!outOfBounds && _source[_index] != '\n')
+                        while (!outOfBounds && source[_index] != '\n')
                         {
-                            buffer += _source[_index];
+                            buffer += source[_index];
                             _index++;
                             _column++;
-                            outOfBounds = _index >= _source.Length;
+                            outOfBounds = _index >= source.Length;
                         }
                         var token = buffer;
                         buffer = "";
@@ -150,12 +148,12 @@ public class Lexer(string source)
                 case "\"" or "'":
                     {
                         var quote = buffer;
-                        while (!outOfBounds && _source[_index].ToString() != quote)
+                        while (!outOfBounds && source[_index].ToString() != quote)
                         {
-                            buffer += _source[_index];
+                            buffer += source[_index];
                             _index++;
                             _column++;
-                            outOfBounds = _index >= _source.Length;
+                            outOfBounds = _index >= source.Length;
                         }
                         _index++;
                         _column++;
@@ -172,12 +170,12 @@ public class Lexer(string source)
             #region Identifier or Keyword
             if (char.IsLetter(character) || character == '_')
             {
-                while (!outOfBounds && (char.IsLetterOrDigit(_source[_index]) || _source[_index] == '_'))
+                while (!outOfBounds && (char.IsLetterOrDigit(source[_index]) || source[_index] == '_'))
                 {
-                    buffer += _source[_index];
+                    buffer += source[_index];
                     _index++;
                     _column++;
-                    outOfBounds = _index >= _source.Length;
+                    outOfBounds = _index >= source.Length;
                 }
                 var token = buffer;
                 buffer = "";
