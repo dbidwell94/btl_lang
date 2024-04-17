@@ -10,11 +10,11 @@ public class LexException(string message, int column, int line) : Exception(mess
 
 public class Lexer(string source)
 {
-    private readonly string source = source;
+    private readonly string _source = source;
 
-    private int index = 0;
-    private int line = 1;
-    private int column = 0;
+    private int _index;
+    private int _line = 1;
+    private int _column;
 
     /// <summary>
     /// Lexes the source code and returns a sequence of tokens.
@@ -23,14 +23,18 @@ public class Lexer(string source)
     /// <exception cref="LexException">Thrown when an error occurs during lexing.</exception>
     public IEnumerable<Token> Lex(bool ignoreWhitespace = false)
     {
-        var buffer = "";
-        while (index < source.Length)
+        bool NextEq(Func<char, bool> predicate)
         {
-            var character = source[index];
-            index++;
-            var outOfBounds = index >= source.Length;
+            return _index < _source.Length && predicate(_source[_index]);
+        }
+        var buffer = "";
+        while (_index < _source.Length)
+        {
+            var character = _source[_index];
+            _index++;
+            var outOfBounds = _index >= _source.Length;
             buffer += character;
-            column++;
+            _column++;
             switch (buffer)
             {
                 #region Whitespace and Newline
@@ -40,7 +44,7 @@ public class Lexer(string source)
                         buffer = "";
                         if (!ignoreWhitespace)
                         {
-                            yield return new Token(new Whitespace(), line, column);
+                            yield return new Token(new Whitespace(), _line, _column);
                         }
                         continue;
                     }
@@ -49,51 +53,50 @@ public class Lexer(string source)
                         buffer = "";
                         if (!ignoreWhitespace)
                         {
-                            yield return new Token(new Whitespace(), line, column);
+                            yield return new Token(new Whitespace(), _line, _column);
                         }
-                        line++;
-                        column = 1;
+                        _line++;
+                        _column = 1;
                         continue;
 
                     }
                 #endregion
 
                 #region Dual Character Operators
-                case "=" when !outOfBounds && source[index] == '=':
-                case "!" when !outOfBounds && source[index] == '=':
-                case "<" when !outOfBounds && source[index] == '=':
-                case ">" when !outOfBounds && source[index] == '=':
-                case "*" when !outOfBounds && source[index] == '=':
-                case "/" when !outOfBounds && source[index] == '=':
-                case "&" when !outOfBounds && source[index] == '&':
-                case "|" when !outOfBounds && source[index] == '|':
-                case ">" when !outOfBounds && source[index] == '>':
-                case "<" when !outOfBounds && source[index] == '<':
-                case "+" when !outOfBounds && source[index] == '+':
-                case "-" when !outOfBounds && source[index] == '-':
-
+                case "=" when NextEq(c => c == '='):
+                case "!" when NextEq(c => c == '='):
+                case "<" when NextEq(c => c == '='):
+                case ">" when NextEq(c => c == '='):
+                case "*" when NextEq(c => c == '='):
+                case "/" when NextEq(c => c == '='):
+                case "&" when NextEq(c => c == '&'):
+                case "|" when NextEq(c => c == '|'):
+                case ">" when NextEq(c => c == '>'):
+                case "<" when NextEq(c => c == '<'):
+                case "+" when NextEq(c => c == '+'):
+                case "-" when NextEq(c => c == '-'):
                     {
-                        buffer += source[index];
-                        index++;
-                        column++;
+                        buffer += _source[_index];
+                        _index++;
+                        _column++;
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(new Operator(token), line, column);
+                        yield return new Token(new Operator(token), _line, _column);
                         continue;
                     }
                 #endregion
 
                 #region Single Character Operators
+                // only divide (/), not comment (//)
+                case "/" when NextEq(c => c != '/'):
+                case "=" when NextEq(c => c != '='):
+                case "&" when NextEq(c => c != '&'):
+                case "|" when NextEq(c => c != '|'):
+                case "!":
                 case "+":
                 case "-":
                 case "*":
-                // only divide (/), not comment (//)
-                case "/" when !outOfBounds && source[index] != '/':
                 case "%":
-                case "=" when !outOfBounds && source[index] != '=':
-                case "!" when !outOfBounds && source[index] != '=':
-                case "&" when !outOfBounds && source[index] != '&':
-                case "|" when !outOfBounds && source[index] != '|':
                 case "~":
                 case "^":
                 case "<":
@@ -101,7 +104,7 @@ public class Lexer(string source)
                     {
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(new Operator(token), line, column);
+                        yield return new Token(new Operator(token), _line, _column);
                         continue;
                     }
                 #endregion
@@ -120,24 +123,24 @@ public class Lexer(string source)
                     {
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(new Punctuation(token), line, column);
+                        yield return new Token(new Punctuation(token), _line, _column);
                         continue;
                     }
                 #endregion
 
                 #region Comments
-                case "/" when source[index] == '/':
+                case "/" when NextEq(c => c == '/'):
                     {
-                        while (!outOfBounds && source[index] != '\n')
+                        while (!outOfBounds && _source[_index] != '\n')
                         {
-                            buffer += source[index];
-                            index++;
-                            column++;
-                            outOfBounds = index >= source.Length;
+                            buffer += _source[_index];
+                            _index++;
+                            _column++;
+                            outOfBounds = _index >= _source.Length;
                         }
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(new Comment(token), line, column);
+                        yield return new Token(new Comment(token), _line, _column);
                         buffer = "";
                         continue;
                     }
@@ -147,19 +150,19 @@ public class Lexer(string source)
                 case "\"" or "'":
                     {
                         var quote = buffer;
-                        while (!outOfBounds && source[index].ToString() != quote)
+                        while (!outOfBounds && _source[_index].ToString() != quote)
                         {
-                            buffer += source[index];
-                            index++;
-                            column++;
-                            outOfBounds = index >= source.Length;
+                            buffer += _source[_index];
+                            _index++;
+                            _column++;
+                            outOfBounds = _index >= _source.Length;
                         }
-                        index++;
-                        column++;
+                        _index++;
+                        _column++;
                         buffer += quote;
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(new Literal(token), line, column);
+                        yield return new Token(new Literal(token), _line, _column);
                         buffer = "";
                         continue;
                     }
@@ -169,21 +172,21 @@ public class Lexer(string source)
             #region Identifier or Keyword
             if (char.IsLetter(character) || character == '_')
             {
-                while (!outOfBounds && (char.IsLetterOrDigit(source[index]) || source[index] == '_'))
+                while (!outOfBounds && (char.IsLetterOrDigit(_source[_index]) || _source[_index] == '_'))
                 {
-                    buffer += source[index];
-                    index++;
-                    column++;
-                    outOfBounds = index >= source.Length;
+                    buffer += _source[_index];
+                    _index++;
+                    _column++;
+                    outOfBounds = _index >= _source.Length;
                 }
                 var token = buffer;
                 buffer = "";
-                yield return new Token(new Identifier(token), line, column);
+                yield return new Token(new Identifier(token), _line, _column);
                 continue;
             }
             #endregion
         }
-        yield return new Token(new EndOfFile(), line, column);
+        yield return new Token(new EndOfFile(), _line, _column);
     }
 
 }
