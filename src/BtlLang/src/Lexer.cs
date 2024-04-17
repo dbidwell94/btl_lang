@@ -1,31 +1,11 @@
-﻿namespace BtlLang;
+﻿using BtlLang.Tokens;
+
+namespace BtlLang;
 
 public class LexException(string message, int column, int line) : Exception(message)
 {
     public int Column = column;
     public int Line = line;
-}
-
-public enum TokenType
-{
-    Identifier,
-    Type,
-    Operator,
-    Literal,
-    Keyword,
-    Punctuation,
-    Comment,
-    Whitespace,
-    Newline,
-    EndOfFile
-}
-
-public struct Token(TokenType type, string value, int line, int column)
-{
-    public TokenType Type = type;
-    public string Value = value;
-    public int Line = line;
-    public int Column = column;
 }
 
 public class Lexer(string source)
@@ -57,21 +37,19 @@ public class Lexer(string source)
                 case " ":
                 case "\t":
                     {
-                        var token = buffer;
                         buffer = "";
                         if (!ignoreWhitespace)
                         {
-                            yield return new Token(TokenType.Whitespace, token, line, column);
+                            yield return new Token(new Whitespace(), line, column);
                         }
                         continue;
                     }
                 case "\n":
                     {
-                        var token = buffer;
                         buffer = "";
                         if (!ignoreWhitespace)
                         {
-                            yield return new Token(TokenType.Newline, token, line, column);
+                            yield return new Token(new Whitespace(), line, column);
                         }
                         line++;
                         column = 1;
@@ -100,7 +78,7 @@ public class Lexer(string source)
                         column++;
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(TokenType.Operator, token, line, column);
+                        yield return new Token(new Operator(token), line, column);
                         continue;
                     }
                 #endregion
@@ -123,7 +101,7 @@ public class Lexer(string source)
                     {
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(TokenType.Operator, token, line, column);
+                        yield return new Token(new Operator(token), line, column);
                         continue;
                     }
                 #endregion
@@ -142,7 +120,7 @@ public class Lexer(string source)
                     {
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(TokenType.Punctuation, token, line, column);
+                        yield return new Token(new Punctuation(token), line, column);
                         continue;
                     }
                 #endregion
@@ -159,7 +137,7 @@ public class Lexer(string source)
                         }
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(TokenType.Comment, token, line, column);
+                        yield return new Token(new Comment(token), line, column);
                         buffer = "";
                         continue;
                     }
@@ -177,10 +155,11 @@ public class Lexer(string source)
                             outOfBounds = index >= source.Length;
                         }
                         index++;
+                        column++;
                         buffer += quote;
                         var token = buffer;
                         buffer = "";
-                        yield return new Token(TokenType.Literal, token, line, column);
+                        yield return new Token(new Literal(token), line, column);
                         buffer = "";
                         continue;
                     }
@@ -199,12 +178,12 @@ public class Lexer(string source)
                 }
                 var token = buffer;
                 buffer = "";
-                yield return new Token(TokenType.Identifier, token, line, column);
+                yield return new Token(new Identifier(token), line, column);
                 continue;
             }
             #endregion
         }
-        yield return new Token(TokenType.EndOfFile, "", line, column);
+        yield return new Token(new EndOfFile(), line, column);
     }
 
 }
