@@ -1,0 +1,7 @@
+struct MySomething {
+    arg1: string
+}
+
+func doSomething(arg: MySomething): MySomething {
+    arg
+}
