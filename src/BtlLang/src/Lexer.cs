@@ -21,10 +21,6 @@ public class Lexer(string source)
     /// <exception cref="LexException">Thrown when an error occurs during lexing.</exception>
     public IEnumerable<Token> Lex(bool ignoreWhitespace = false)
     {
-        bool NextEq(Func<char, bool> predicate)
-        {
-            return _index < source.Length && predicate(source[_index]);
-        }
         var buffer = "";
         while (_index < source.Length)
         {
@@ -116,7 +112,7 @@ public class Lexer(string source)
                 case "]":
                 case ",":
                 case ":":
-                case ".":
+                case "." when !NextEq(char.IsDigit):
                 case ";":
                     {
                         var token = buffer;
@@ -179,12 +175,58 @@ public class Lexer(string source)
                 }
                 var token = buffer;
                 buffer = "";
-                yield return new Token(new Identifier(token), _line, _column);
+                yield return ParseKeywordOrIdentifier(token);
+                continue;
+            }
+            #endregion
+            
+            #region Number
+            if(char.IsDigit(character) || character == '.')
+            {
+                var alreadyUsedDot = character == '.';
+                while (!outOfBounds && (char.IsDigit(source[_index]) || (!alreadyUsedDot && source[_index] == '.')))
+                {
+                    if (source[_index] == '.')
+                    {
+                        alreadyUsedDot = true;
+                    }
+                    buffer += source[_index];
+                    _index++;
+                    _column++;
+                    outOfBounds = _index >= source.Length;
+                }
+                var token = buffer;
+                buffer = "";
+                yield return new Token(new Literal(token), _line, _column);
                 continue;
             }
             #endregion
         }
         yield return new Token(new EndOfFile(), _line, _column);
+        yield break;
+
+        bool NextEq(Func<char, bool> predicate)
+        {
+            return _index < source.Length && predicate(source[_index]);
+        }
+    }
+    
+    private Token ParseKeywordOrIdentifier(string buffer)
+    {
+        return buffer switch
+        {
+            "if" => new Token(new Keyword("if"), _line, _column),
+            "else" => new Token(new Keyword("else"), _line, _column),
+            "while" => new Token(new Keyword("while"), _line, _column),
+            "for" => new Token(new Keyword("for"), _line, _column),
+            "return" => new Token(new Keyword("return"), _line, _column),
+            "break" => new Token(new Keyword("break"), _line, _column),
+            "continue" => new Token(new Keyword("continue"), _line, _column),
+            "true" => new Token(new Keyword("true"), _line, _column),
+            "false" => new Token(new Keyword("false"), _line, _column),
+            "null" => new Token(new Keyword("null"), _line, _column),
+            _ => new Token(new Identifier(buffer), _line, _column)
+        };
     }
 
 }
