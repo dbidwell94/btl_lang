@@ -31,7 +31,6 @@ public class TokenTests
         Assert.False(token.Type.IsPunctuation());
         Assert.False(token.Type.IsComment());
         Assert.False(token.Type.IsWhitespace());
-        Assert.False(token.Type.IsNewline());
         Assert.False(token.Type.IsEndOfFile());
         Assert.Equal("Identifier", token.Type.GetTypeName());
     }

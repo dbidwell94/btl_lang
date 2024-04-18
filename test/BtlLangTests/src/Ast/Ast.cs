@@ -15,7 +15,7 @@ public class AstTest
                                           var localVar: int = add(1, 4);
                                       }
                                       
-                                      func add(a: int, b: int): int
+                                      func add(int a, int b): int
                                       {
                                           return a + b;
                                       }
@@ -25,13 +25,13 @@ public class AstTest
     [Fact]
     public void TestParameterParsing()
     {
-        var lexer = new Lexer("a: int, b: int)");
+        var lexer = new Lexer("int a, int b");
         var tokens = lexer.Lex(true);
         using var enumerator = tokens.GetEnumerator();
-        var punc = new ParameterNode(enumerator, new Punctuation(","), new Punctuation(")"));
+        var punc = new ParameterNode(enumerator);
         Assert.Equal("a", punc.Name.Value);
         Assert.Equal("int", punc.Type.Value);
-        punc = new ParameterNode(enumerator, new Punctuation(","), new Punctuation(")"));
+        punc = new ParameterNode(enumerator);
         Assert.Equal("b", punc.Name.Value);
         Assert.Equal("int", punc.Type.Value);
     }

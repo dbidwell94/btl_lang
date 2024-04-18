@@ -16,8 +16,6 @@ public record Comment(string Value) : TokenType;
 
 public record Whitespace : TokenType;
 
-public record Newline : TokenType;
-
 public record EndOfFile : TokenType;
 
 public readonly struct Token
@@ -45,7 +43,6 @@ public static class TokenExtensions
     public static bool IsPunctuation(this TokenType type) => type is Punctuation;
     public static bool IsComment(this TokenType type) => type is Comment;
     public static bool IsWhitespace(this TokenType type) => type is Whitespace;
-    public static bool IsNewline(this TokenType type) => type is Newline;
     public static bool IsEndOfFile(this TokenType type) => type is EndOfFile;
 
     public static T TryParse<T>(this TokenType type, Exception toThrow) where T : TokenType
@@ -70,7 +67,6 @@ public static class TokenExtensions
         Punctuation => "Punctuation",
         Comment => "Comment",
         Whitespace => "Whitespace",
-        Newline => "Newline",
         EndOfFile => "EndOfFile",
         _ => "Unknown"
     };
