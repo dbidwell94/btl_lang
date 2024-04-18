@@ -22,5 +22,7 @@ jobs:
         dotnet-version: 8.0.x
     - name: Restore dependencies
       run: dotnet restore ./test/BtlLangTests/BtlLangTests.csproj && dotnet restore ./src/BtlLang/BtlLang.csproj
+    - name: Build tests
+      run: dotnet build ./test/BtlLangTests/BtlLangTests.csproj
     - name: Test
       run: dotnet test ./test/BtlLangTests/BtlLangTests.csproj --no-build --verbosity normal
