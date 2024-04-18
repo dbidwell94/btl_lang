@@ -239,6 +239,9 @@ public class Lexer(string source)
             "null" => new Token(new Keyword("null"), _line, _column),
             "func" => new Token(new Keyword("func"), _line, _column),
             "struct" => new Token(new Keyword("struct"), _line, _column),
+            "loop" => new Token(new Keyword("loop"), _line, _column),
+            "var" => new Token(new Keyword("var"), _line, _column),
+            "const" => new Token(new Keyword("const"), _line, _column),
             _ => new Token(new Identifier(buffer), _line, _column)
         };
     }
