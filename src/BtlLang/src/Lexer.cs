@@ -42,6 +42,18 @@ public class Lexer(string source)
                         }
                         continue;
                     }
+                case "\r" when NextEq(c => c == '\n'):
+                {
+                    buffer = "";
+                    if (!ignoreWhitespace)
+                    {
+                        yield return new Token(new Whitespace(), _line, _column);
+                    }
+                    _line++;
+                    _column = 1;
+                    _index++;
+                    continue;
+                }
                 case "\n":
                     {
                         buffer = "";
@@ -125,7 +137,7 @@ public class Lexer(string source)
                 #region Comments
                 case "/" when NextEq(c => c == '/'):
                     {
-                        while (!outOfBounds && source[_index] != '\n')
+                        while (!outOfBounds && source[_index] != '\n' && source[_index] != '\r')
                         {
                             buffer += source[_index];
                             _index++;
@@ -225,6 +237,8 @@ public class Lexer(string source)
             "true" => new Token(new Keyword("true"), _line, _column),
             "false" => new Token(new Keyword("false"), _line, _column),
             "null" => new Token(new Keyword("null"), _line, _column),
+            "func" => new Token(new Keyword("func"), _line, _column),
+            "struct" => new Token(new Keyword("struct"), _line, _column),
             _ => new Token(new Identifier(buffer), _line, _column)
         };
     }

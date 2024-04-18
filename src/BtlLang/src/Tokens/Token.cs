@@ -34,6 +34,8 @@ public readonly struct Token
         Line = line;
         Column = column;
     }
+    
+    public override string ToString() => $"Token: {Type.GetTypeName()} at line {Line}, column {Column} -- {Type}";
 }
 
 public static class TokenExtensions
