@@ -25,7 +25,6 @@ public class TokenTests
     {
         var token = new Token(new Identifier("test"), 1, 1);
         Assert.True(token.Type.IsIdentifier());
-        Assert.False(token.Type.IsType());
         Assert.False(token.Type.IsOperator());
         Assert.False(token.Type.IsLiteral());
         Assert.False(token.Type.IsKeyword());

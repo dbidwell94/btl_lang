@@ -1,6 +1,8 @@
 using BtlLang;
+using BtlLang.Ast;
+using BtlLang.Tokens;
 
-namespace BtlLangTests;
+namespace BtlLangTests.Ast;
 
 public class AstTest
 {
@@ -21,10 +23,16 @@ public class AstTest
 
 
     [Fact]
-    public void TestBuildTree()
+    public void TestParameterParsing()
     {
-        var lexer = new Lexer(Source);
-        var ast = new Ast(lexer);
-        ast.BuildTree();
+        var lexer = new Lexer("a: int, b: int)");
+        var tokens = lexer.Lex(true);
+        using var enumerator = tokens.GetEnumerator();
+        var punc = new ParameterNode(enumerator, new Punctuation(","), new Punctuation(")"));
+        Assert.Equal("a", punc.Name.Value);
+        Assert.Equal("int", punc.Type.Value);
+        punc = new ParameterNode(enumerator, new Punctuation(","), new Punctuation(")"));
+        Assert.Equal("b", punc.Name.Value);
+        Assert.Equal("int", punc.Type.Value);
     }
 }

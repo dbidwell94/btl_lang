@@ -4,8 +4,6 @@ public abstract record TokenType;
 
 public record Identifier(string Value) : TokenType;
 
-public record Type(string Value) : TokenType;
-
 public record Operator(string Value) : TokenType;
 
 public record Literal(string Value) : TokenType;
@@ -41,7 +39,6 @@ public readonly struct Token
 public static class TokenExtensions
 {
     public static bool IsIdentifier(this TokenType type) => type is Identifier;
-    public static bool IsType(this TokenType type) => type is Type;
     public static bool IsOperator(this TokenType type) => type is Operator;
     public static bool IsLiteral(this TokenType type) => type is Literal;
     public static bool IsKeyword(this TokenType type) => type is Keyword;
@@ -51,11 +48,22 @@ public static class TokenExtensions
     public static bool IsNewline(this TokenType type) => type is Newline;
     public static bool IsEndOfFile(this TokenType type) => type is EndOfFile;
 
+    public static T TryParse<T>(this TokenType type, Exception toThrow) where T : TokenType
+    {
+        try
+        {
+            return (T)type;
+        }
+        catch (Exception _)
+        {
+            throw toThrow;
+        }
+    }
+
 
     public static string GetTypeName(this TokenType type) => type switch
     {
         Identifier => "Identifier",
-        Type => "Type",
         Operator => "Operator",
         Literal => "Literal",
         Keyword => "Keyword",
