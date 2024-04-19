@@ -227,21 +227,21 @@ public class Lexer(string source)
     {
         return buffer switch
         {
-            "if" => new Token(new Keyword("if"), _line, _column),
-            "else" => new Token(new Keyword("else"), _line, _column),
-            "while" => new Token(new Keyword("while"), _line, _column),
-            "for" => new Token(new Keyword("for"), _line, _column),
-            "return" => new Token(new Keyword("return"), _line, _column),
-            "break" => new Token(new Keyword("break"), _line, _column),
-            "continue" => new Token(new Keyword("continue"), _line, _column),
-            "true" => new Token(new Keyword("true"), _line, _column),
-            "false" => new Token(new Keyword("false"), _line, _column),
-            "null" => new Token(new Keyword("null"), _line, _column),
-            "func" => new Token(new Keyword("func"), _line, _column),
-            "struct" => new Token(new Keyword("struct"), _line, _column),
-            "loop" => new Token(new Keyword("loop"), _line, _column),
-            "var" => new Token(new Keyword("var"), _line, _column),
-            "const" => new Token(new Keyword("const"), _line, _column),
+            Keywords.If => new Token(new Keyword(Keywords.If), _line, _column),
+            Keywords.Else => new Token(new Keyword(Keywords.Else), _line, _column),
+            Keywords.While => new Token(new Keyword(Keywords.While), _line, _column),
+            Keywords.For => new Token(new Keyword(Keywords.For), _line, _column),
+            Keywords.Return => new Token(new Keyword(Keywords.Return), _line, _column),
+            Keywords.Break => new Token(new Keyword(Keywords.Break), _line, _column),
+            Keywords.Continue => new Token(new Keyword(Keywords.Continue), _line, _column),
+            Keywords.True => new Token(new Keyword(Keywords.True), _line, _column),
+            Keywords.False => new Token(new Keyword(Keywords.False), _line, _column),
+            Keywords.Null => new Token(new Keyword(Keywords.Null), _line, _column),
+            Keywords.Func => new Token(new Keyword(Keywords.Func), _line, _column),
+            Keywords.Struct => new Token(new Keyword(Keywords.Struct), _line, _column),
+            Keywords.Loop => new Token(new Keyword(Keywords.Loop), _line, _column),
+            Keywords.Var => new Token(new Keyword(Keywords.Var), _line, _column),
+            Keywords.Const => new Token(new Keyword(Keywords.Const), _line, _column),
             _ => new Token(new Identifier(buffer), _line, _column)
         };
     }

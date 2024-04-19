@@ -4,23 +4,8 @@ using BtlLang.Tokens;
 
 namespace BtlLangTests.Ast;
 
-public class AstTest
+public class AstParameterTests
 {
-    private const string Source = """
-                                      const globalVar: string = "Hello, World!";
-                                   
-                                      // Entrypoint of the program
-                                      func main()
-                                      {
-                                          var localVar: int = add(1, 4);
-                                      }
-                                      
-                                      func add(int a, int b): int
-                                      {
-                                          return a + b;
-                                      }
-                                   """;
-
     [Fact]
     public void TestIsParameter()
     {
@@ -46,5 +31,21 @@ public class AstTest
 
         ParameterNode.IsParameterNode(out _, seekable, typeof(FunctionNode));
         Assert.Throws<PunctuationException>(() => ParameterNode.IsParameterNode(out _, seekable, typeof(FunctionNode)));
+    }
+}
+
+public class AstFunctionTests
+{
+    [Fact]
+    public void TestFunctionAst()
+    {
+        const string function = """
+                                  func add(a: int, b: int): int {
+                                      
+                                  }
+                                """;
+        var lexer = new Lexer(function);
+        var cachedEnumerable = new CachedEnumerable<Token>(lexer.Lex(true));
+        Assert.True(FunctionNode.IsFunctionNode(out _, cachedEnumerable));
     }
 }

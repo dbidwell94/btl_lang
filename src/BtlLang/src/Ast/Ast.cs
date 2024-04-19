@@ -49,8 +49,8 @@ public class RootNode : Node
 }
 public class ParameterNode : Node
 {
-    public Identifier Name { get; set; }
-    public Identifier Type { get; set; } 
+    public Identifier Name { get; private set; }
+    public Identifier Type { get; private set; } 
     
     /// <summary>
     /// 
@@ -145,18 +145,15 @@ Syntax is as follows:
 */
 public class FunctionNode : Node
 {
-    public Identifier Name { get; internal set; }
-    public Queue<ParameterNode> Parameters { get; internal set; } = [];
-    public Identifier ReturnType { get; internal set; }
-    public BlockNode Body { get; internal set; }
+    public Identifier Name { get; private set; }
+    public Queue<ParameterNode> Parameters { get; private set; } = [];
+    public Identifier ReturnType { get; private set; }
+    public BlockNode Body { get; private set; }
 
     public static bool IsFunctionNode(out FunctionNode node, CachedEnumerable<Token> tokens)
     {
         node = default;
-        if (tokens.Current.Type is not Keyword { Value: "func" })
-        {
-            return false;
-        }
+        var foundFunctionKeyword = false;
         
         Identifier name = null;
         Queue<ParameterNode> parameters = [];
@@ -165,28 +162,136 @@ public class FunctionNode : Node
 
         while (tokens.MoveNext())
         {
+            if (tokens.Current.Type.IsWhitespace() || tokens.Current.Type.IsComment())
+            {
+                continue;
+            }
+
+            if (name is null && !foundFunctionKeyword && tokens.Current.Type is Keyword { Value: "func" })
+            {
+                foundFunctionKeyword = true;
+                continue;
+            }
+            
+            // we have not yet parsed the name
             if (name is null)
             {
                 name = tokens.Current.Type.TryParse<Identifier>(new UnexpectedTokenException(tokens.Current));
                 continue;
             }
-
-            // we have not yet passed params
-            if (returnType is null && ParameterNode.IsParameterNode(out var parameterNode, tokens, typeof(FunctionNode)))
+            
+            // we have not yet parsed the return type
+            if (returnType is null && tokens.Current.Type.IsPunctuation())
             {
-                parameters.Enqueue(parameterNode);
+                switch (tokens.Current.Type)
+                {
+                    case Punctuation { Value: ":" } when !tokens.MoveNext():
+                        throw new UnexpectedEndOfFileException(tokens.Current);
+                    case Punctuation { Value: ":" }:
+                        returnType = tokens.Current.Type.TryParse<Identifier>(new UnexpectedTokenException(tokens.Current));
+                        continue;
+                    case Punctuation { Value: "{" }:
+                        returnType = new Identifier("void");
+                        break;
+                }
+            }
+            
+            // we have not yet parsed params
+            if (returnType is null)
+            {
+                while (ParameterNode.IsParameterNode(out var parameterNode, tokens, typeof(FunctionNode)))
+                {
+                    parameters.Enqueue(parameterNode);
+                }
                 continue;
+            }
+
+            // we have not yet parsed the body
+            if (returnType is not null && body is null && BlockNode.IsBlockNode(out var blockNode, tokens))
+            {
+                body = blockNode;
+                break;
             }
         }
 
-        // TODO: Implement the rest of the function node
+        if (name is null || returnType is null || body is null)
+        {
+            throw new UnexpectedEndOfFileException(tokens.Current);
+        }
+
+        node = new FunctionNode
+        {
+            Name = name,
+            Body = body,
+            Parameters = parameters,
+            ReturnType = returnType
+        };
         return false;
     }
 }
 
 public class BlockNode : Node
 {
-    
+    public static bool IsBlockNode(out BlockNode node, CachedEnumerable<Token> tokens)
+    {
+        node = null;
+        
+        var foundOpeningBrace = false;
+        var foundClosingBrace = false;
+
+        Queue<Node> nodes = [];
+
+        while (tokens.MoveNext() && !foundClosingBrace)
+        {
+            if (tokens.Current.Type.IsWhitespace() || tokens.Current.Type.IsComment())
+            {
+                continue;
+            }
+            
+            switch (foundOpeningBrace)
+            {
+                case false when tokens.Current.Type is Punctuation { Value: "{" }:
+                    foundOpeningBrace = true;
+                    continue;
+                case false when tokens.Current.Type is not Punctuation { Value: "{" }:
+                    return false;
+            }
+
+            foundClosingBrace = foundClosingBrace switch
+            {
+                false when tokens.Current.Type is Punctuation { Value: "}" } => true,
+                _ => foundClosingBrace
+            };
+
+            if (FunctionNode.IsFunctionNode(out var functionNode, tokens))
+            {
+                nodes.Enqueue(functionNode);
+                continue;
+            }
+
+            if (StructNode.IsStructNode(out var structNode, tokens))
+            {
+                nodes.Enqueue(structNode);
+                continue;
+            }
+
+            if (IsBlockNode(out var blockNode, tokens))
+            {
+                nodes.Enqueue(blockNode);
+            }
+        }
+        
+        if (!foundOpeningBrace || !foundClosingBrace)
+        {
+            throw new UnexpectedEndOfFileException(tokens.Current);
+        }
+
+        node = new BlockNode
+        {
+            Nodes = nodes
+        };
+        return true;
+    }
 }
 
 public class StructNode : Node
