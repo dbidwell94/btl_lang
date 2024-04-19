@@ -17,8 +17,7 @@ public class Ast
     public Ast(Lexer lexer)
     {
         var tokens = lexer.Lex(true);
-        using var enumerator = tokens.GetEnumerator();
-        Root = new RootNode(enumerator);
+        Root = new RootNode(new CachedEnumerable<Token>(tokens));
     }
 }
 
@@ -31,84 +30,106 @@ public abstract class Node
 
 public class RootNode : Node
 {
-    public RootNode(IEnumerator<Token> tokens)
+    public RootNode(CachedEnumerable<Token> tokens)
     {
         while (tokens.MoveNext())
         {
-            var current = tokens.Current;
-            if (current.Type.IsKeyword())
+            if (FunctionNode.IsFunctionNode(out var node, tokens))
             {
-                switch (((Keyword)current.Type).Value)
-                {
-                    case "func":
-                        Nodes.Enqueue(new FunctionNode(tokens));
-                        break;
-                    case "struct":
-                        Nodes.Enqueue(new StructNode(tokens));
-                        break;
-                    case "const":
-                    case "var":
-                        Nodes.Enqueue(new VariableNode(tokens));
-                        break;
-                    default:
-                        throw new KeywordException(current);
-                }
+                Nodes.Enqueue(node);
+                continue;
             }
-            else if (current.Type.IsPunctuation())
+            if (StructNode.IsStructNode(out var structNode, tokens))
             {
-                switch (((Punctuation)current.Type).Value)
-                {
-                    case "{":
-                        Nodes.Enqueue(new BlockNode(tokens));
-                        break;
-                    default:
-                        throw new PunctuationException(current);
-                }
+                Nodes.Enqueue(structNode);
+                continue;
             }
         }
     }
 }
 public class ParameterNode : Node
 {
-    public Identifier Name { get; }
-    public Identifier Type { get; } 
-    public ParameterNode(IEnumerator<Token> tokens)
+    public Identifier Name { get; set; }
+    public Identifier Type { get; set; } 
+    
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="node"></param>
+    /// <param name="tokens"></param>
+    /// <param name="parentType">What type is the parent node? Expected func or struct, otherwise false</param>
+    /// <returns></returns>
+    public static bool IsParameterNode(out ParameterNode node, CachedEnumerable<Token> tokens, Type parentType)
     {
+        node = default!;
+        var toReturn = false;
+        int movedAmount = 0;
+        
+        if (parentType != typeof(FunctionNode) && parentType != typeof(StructNode))
+        {
+            return toReturn;
+        }
+
         while (tokens.MoveNext())
         {
-            if (Name is not null && Type is not null)
-            {
-                break;
-            }
             if (tokens.Current.Type.IsWhitespace() || tokens.Current.Type.IsComment())
             {
                 continue;
             }
-            switch (tokens.Current.Type)
+            movedAmount++;
+            var current = tokens.Current;
+            if (current.Type.IsIdentifier())
             {
-                case Identifier id:
-                    
-                    if (Type is null)
+                node = new ParameterNode
+                {
+                    Name = (Identifier)current.Type
+                };
+            }
+            else if (current.Type.IsPunctuation())
+            {
+                if (((Punctuation)current.Type).Value == ":")
+                {
+                    if (node is null)
                     {
-                        Type = id;
+                        break;
                     }
-                    else if (Name is null)
+                    if (!tokens.MoveNext())
                     {
-                        Name = id;
+                        break;
                     }
-                    continue;
-                case Punctuation punc:
-                    switch (punc.Value)
+                    movedAmount++;
+                    current = tokens.Current;
+                    if (current.Type.IsIdentifier())
                     {
-                        case ",":
-                            continue;
-                        default:
-                            throw new PunctuationException(tokens.Current);
+                        node.Type = (Identifier)current.Type;
+                        toReturn = true;
                     }
-                default:
-                    throw new UnexpectedTokenException(tokens.Current);
+
+                    break;
+                }
             }
         }
+
+        if (!toReturn)
+        {
+            node = null;
+            tokens.Seek(-movedAmount);
+            return toReturn;
+        }
+
+        tokens.MoveNext();
+
+        // If parentType is FunctionNode and the next token is not a comma or closing parenthesis, throw an exception
+        if (parentType == typeof(FunctionNode) && !tokens.Current.Type.IsPunctuation())
+        {
+            throw new PunctuationException(tokens.Current);
+        }
+        if (((Punctuation)tokens.Current.Type).Value != "," && ((Punctuation)tokens.Current.Type).Value != ")")
+        {
+            throw new PunctuationException(tokens.Current);
+        }
+        
+        return toReturn;
     }
 }
 
@@ -124,130 +145,60 @@ Syntax is as follows:
 */
 public class FunctionNode : Node
 {
-    public Identifier Name { get; private set; }
-    public Queue<ParameterNode> Parameters { get; private set; } = [];
-    public Identifier ReturnType { get; private set; }
-    public BlockNode Body { get; private set; }
-    public FunctionNode(IEnumerator<Token> tokens)
+    public Identifier Name { get; internal set; }
+    public Queue<ParameterNode> Parameters { get; internal set; } = [];
+    public Identifier ReturnType { get; internal set; }
+    public BlockNode Body { get; internal set; }
+
+    public static bool IsFunctionNode(out FunctionNode node, CachedEnumerable<Token> tokens)
     {
-        if(tokens.Current.Type.TryParse<Keyword>(new KeywordException(tokens.Current)).Value != "func")
+        node = default;
+        if (tokens.Current.Type is not Keyword { Value: "func" })
         {
-            throw new KeywordException(tokens.Current);
+            return false;
         }
         
-        var parsingParameters = false;
-        var parsingReturnType = false;
+        Identifier name = null;
+        Queue<ParameterNode> parameters = [];
+        Identifier returnType = null;
+        BlockNode body = null;
 
         while (tokens.MoveNext())
         {
-            // base case. We have finished parsing this function.
-            // Parameters are optional, but the name and body are required.
-            if (Body is not null && Name is not null && ReturnType is not null)
+            if (name is null)
             {
-                break;
-            }
-            
-            
-            var current = tokens.Current;
-            if (current.Type.IsWhitespace() || current.Type.IsComment())
-            {
-                continue;
-            }
-            
-            if (parsingReturnType)
-            {
-                ReturnType = current.Type.TryParse<Identifier>(new IdentifierException(current));
-                parsingReturnType = false;
+                name = tokens.Current.Type.TryParse<Identifier>(new UnexpectedTokenException(tokens.Current));
                 continue;
             }
 
-            if (parsingParameters)
+            // we have not yet passed params
+            if (returnType is null && ParameterNode.IsParameterNode(out var parameterNode, tokens, typeof(FunctionNode)))
             {
-                // check for end of parameters
-                if (current.Type is Punctuation { Value: ")" })
-                {
-                    parsingParameters = false;
-                    continue;
-                }
-                Parameters.Enqueue(new ParameterNode(tokens));
-            }
-
-            switch (current.Type)
-            {
-                case Identifier id when Name is null:
-                {
-                    Name = id;
-                    continue;
-                }
-                case Punctuation { Value: "(" }:
-                {
-                    if (Parameters.Count > 0)
-                    {
-                        throw new PunctuationException(tokens.Current);
-                    }
-                    parsingParameters = true;
-                    Parameters.Enqueue(new ParameterNode(tokens));
-                    continue;
-                }
-                case Punctuation { Value: ":" }:
-                {
-                    parsingReturnType = true;
-                    continue;
-                }
-                case Punctuation { Value: "{" } when Body is null && Name is not null:
-                {
-                    // if we have not parsed a return type, default to void
-                    ReturnType = new Identifier("void");
-                    Body = new BlockNode(tokens);
-                    break;
-                }
-                default:
-                    throw new UnexpectedTokenException(current);
+                parameters.Enqueue(parameterNode);
+                continue;
             }
         }
+
+        // TODO: Implement the rest of the function node
+        return false;
     }
 }
 
 public class BlockNode : Node
 {
-    public BlockNode(IEnumerator<Token> tokens)
-    {
-        while (tokens.MoveNext())
-        {
-            var current = tokens.Current;
-            if (current.Type.IsWhitespace() || current.Type.IsComment())
-            {
-                continue;
-            }
-            if (current.Type is Punctuation { Value: "}" })
-            {
-                break;
-            }
-
-
-            switch (tokens.Current.Type)
-            {
-                case Keyword keyword:
-                {
-                    switch (keyword.Value)
-                    {
-                        
-                    }
-
-                    continue;
-                }
-            }
-        }
-    }
+    
 }
 
 public class StructNode : Node
 {
     public Identifier Name { get; private set; }
     public List<ParameterNode> Fields { get; private set; }
-    public StructNode(IEnumerator<Token> tokens)
+    
+    public static bool IsStructNode(out StructNode node, CachedEnumerable<Token> tokens)
     {
-         
+        node = null;
+        return false;
+        // TODO: Implement the struct node
     }
 }
 
@@ -257,7 +208,7 @@ public class VariableNode : Node
     public Identifier Name { get; private set; }
     public Identifier Type { get; private set; }
     public ExpressionNode Value { get; private set; }
-    public VariableNode(IEnumerator<Token> tokens)
+    public VariableNode(CachedEnumerable<Token> tokens)
     {
         
     }

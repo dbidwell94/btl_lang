@@ -21,18 +21,30 @@ public class AstTest
                                       }
                                    """;
 
-
     [Fact]
-    public void TestParameterParsing()
+    public void TestIsParameter()
     {
-        var lexer = new Lexer("int a, int b");
+        var lexer = new Lexer("(a: int, b: int)");
         var tokens = lexer.Lex(true);
-        using var enumerator = tokens.GetEnumerator();
-        var punc = new ParameterNode(enumerator);
-        Assert.Equal("a", punc.Name.Value);
-        Assert.Equal("int", punc.Type.Value);
-        punc = new ParameterNode(enumerator);
-        Assert.Equal("b", punc.Name.Value);
-        Assert.Equal("int", punc.Type.Value);
+        var seekable = new CachedEnumerable<Token>(tokens);
+
+        ParameterNode nodeToTest;
+        
+        Assert.True(ParameterNode.IsParameterNode(out nodeToTest, seekable, typeof(FunctionNode)));
+        Assert.Equal("a", nodeToTest.Name.Value);
+        Assert.Equal("int", nodeToTest.Type.Value);
+        Assert.True(ParameterNode.IsParameterNode(out nodeToTest, seekable, typeof(FunctionNode)));
+        Assert.Equal("b", nodeToTest.Name.Value);
+        Assert.Equal("int", nodeToTest.Type.Value);
+    }
+    
+    [Fact]
+    public void TestParameterPunctuationException()
+    {
+        var lexer = new Lexer("(a: int, b: int");
+        var seekable = new CachedEnumerable<Token>(lexer.Lex(true));
+
+        ParameterNode.IsParameterNode(out _, seekable, typeof(FunctionNode));
+        Assert.Throws<PunctuationException>(() => ParameterNode.IsParameterNode(out _, seekable, typeof(FunctionNode)));
     }
 }
