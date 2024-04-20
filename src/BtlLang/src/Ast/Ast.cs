@@ -172,6 +172,11 @@ public class FunctionNode : Node
                 foundFunctionKeyword = true;
                 continue;
             }
+            if(!foundFunctionKeyword && name is null && tokens.Current.Type is not Keyword {Value: "func"})
+            {
+                return false;
+            }
+            
             
             // we have not yet parsed the name
             if (name is null)
@@ -207,7 +212,7 @@ public class FunctionNode : Node
             }
 
             // we have not yet parsed the body
-            if (returnType is not null && body is null && BlockNode.IsBlockNode(out var blockNode, tokens))
+            if (body is null && BlockNode.IsBlockNode(out var blockNode, tokens))
             {
                 body = blockNode;
                 break;
@@ -226,7 +231,7 @@ public class FunctionNode : Node
             Parameters = parameters,
             ReturnType = returnType
         };
-        return false;
+        return true;
     }
 }
 
@@ -236,7 +241,7 @@ public class BlockNode : Node
     {
         node = null;
         
-        var foundOpeningBrace = false;
+        var foundOpeningBrace = tokens.Current.Type is Punctuation { Value: "{" };
         var foundClosingBrace = false;
 
         Queue<Node> nodes = [];
@@ -262,6 +267,10 @@ public class BlockNode : Node
                 false when tokens.Current.Type is Punctuation { Value: "}" } => true,
                 _ => foundClosingBrace
             };
+            if (foundClosingBrace)
+            {
+                break;
+            }
 
             if (FunctionNode.IsFunctionNode(out var functionNode, tokens))
             {
